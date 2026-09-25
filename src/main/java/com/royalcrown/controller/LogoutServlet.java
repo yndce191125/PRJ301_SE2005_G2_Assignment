@@ -1,4 +1,5 @@
 package com.royalcrown.controller;
+import com.royalcrown.utils.SessionUtil;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -31,11 +32,7 @@ public class LogoutServlet extends HttpServlet {
             HttpServletResponse response)
             throws ServletException, IOException {
 
-        HttpSession session = request.getSession(false);
-
-        if (session != null) {
-            session.invalidate();
-        }
+       SessionUtil.invalidate(request);
 
         response.sendRedirect(
                 request.getContextPath()

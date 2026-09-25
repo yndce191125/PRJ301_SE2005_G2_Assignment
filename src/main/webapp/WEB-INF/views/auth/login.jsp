@@ -185,13 +185,10 @@
                     Email
                 </label>
 
-                <input
-                    type="email"
-                    id="email"
-                    name="email"
-                    placeholder="Enter your email"
-                    required
-                >
+                <input type="email"
+       name="email"
+       value="${rememberedEmail != null ? rememberedEmail : ''}"
+       required>
 
             </div>
 
@@ -210,6 +207,14 @@
                 >
 
             </div>
+            <div>
+    <label>
+       <input type="checkbox"
+       name="rememberEmail"
+       ${rememberEmail == true ? 'checked' : ''}>
+        Remember Email
+    </label>
+</div>
 
             <button type="submit" class="btn-login">
                 LOGIN

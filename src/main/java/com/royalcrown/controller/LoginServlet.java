@@ -1,8 +1,9 @@
 package com.royalcrown.controller;
 
 import com.royalcrown.model.User;
+import com.royalcrown.utils.CookieUtil;
 import com.royalcrown.service.AuthenticationService;
-
+import com.royalcrown.utils.SessionUtil;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -41,15 +42,22 @@ public class LoginServlet extends HttpServlet {
      * @throws IOException if an I/O error occurs
      */
     @Override
-    protected void doGet(
-            HttpServletRequest request,
-            HttpServletResponse response)
-            throws ServletException, IOException {
+protected void doGet(HttpServletRequest request,
+        HttpServletResponse response)
+        throws ServletException, IOException {
 
-        request.getRequestDispatcher(
-                "/WEB-INF/views/auth/login.jsp"
-        ).forward(request, response);
+    String rememberedEmail =
+            CookieUtil.getCookie(request, "rememberEmail");
+
+    if (rememberedEmail != null) {
+        request.setAttribute("rememberedEmail", rememberedEmail);
+        request.setAttribute("rememberEmail", true);
     }
+
+    request.getRequestDispatcher(
+            "/WEB-INF/views/auth/login.jsp"
+    ).forward(request, response);
+}
 
     /**
      * Handles POST requests for user authentication.
@@ -69,7 +77,7 @@ public class LoginServlet extends HttpServlet {
 
         String email = request.getParameter("email");
         String password = request.getParameter("password");
-
+        String rememberEmail = request.getParameter("rememberEmail");
         User user = authenticationService.authenticate(
                 email,
                 password
@@ -88,6 +96,16 @@ public class LoginServlet extends HttpServlet {
 
             return;
         }
+        if ("on".equals(rememberEmail)) {
+    CookieUtil.setCookie(
+            response,
+            "rememberEmail",
+            user.getEmail(),
+            7 * 24 * 60 * 60
+    );
+} else {
+    CookieUtil.deleteCookie(response, "rememberEmail");
+}
 
         /*
          * Remove old session to prevent session fixation.
@@ -103,10 +121,7 @@ public class LoginServlet extends HttpServlet {
          */
         HttpSession session = request.getSession(true);
 
-        session.setAttribute("user", user);
-        session.setAttribute("userId", user.getUserId());
-        session.setAttribute("fullName", user.getFullName());
-        session.setAttribute("role", user.getRole());
+        SessionUtil.setUser(request, user);
 
         /*
          * Redirect to HomeServlet after successful login.
