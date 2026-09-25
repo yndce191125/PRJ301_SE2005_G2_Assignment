@@ -1,87 +1,259 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/JSP_Servlet/Servlet.java to edit this template
- */
 package com.royalcrown.controller;
 
-import java.io.IOException;
-import java.io.PrintWriter;
+import com.royalcrown.dao.UserDAO;
+import com.royalcrown.model.User;
+import com.royalcrown.utils.PasswordUtil;
+
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+import java.io.IOException;
+
 /**
+ * Handles user registration.
  *
- * @author ASUS
+ * @author Nguyen Duong Y
  */
-@WebServlet(name = "RegisterServlet", urlPatterns = {"/RegisterServlet"})
+@WebServlet("/RegisterServlet")
 public class RegisterServlet extends HttpServlet {
 
-    /**
-     * Processes requests for both HTTP <code>GET</code> and <code>POST</code>
-     * methods.
-     *
-     * @param request servlet request
-     * @param response servlet response
-     * @throws ServletException if a servlet-specific error occurs
-     * @throws IOException if an I/O error occurs
-     */
-    protected void processRequest(HttpServletRequest request, HttpServletResponse response)
+    private UserDAO userDAO;
+
+    @Override
+    public void init() throws ServletException {
+
+        userDAO = new UserDAO();
+    }
+
+    @Override
+    protected void doGet(
+            HttpServletRequest request,
+            HttpServletResponse response)
             throws ServletException, IOException {
-        response.setContentType("text/html;charset=UTF-8");
-        try (PrintWriter out = response.getWriter()) {
-            /* TODO output your page here. You may use following sample code. */
-            out.println("<!DOCTYPE html>");
-            out.println("<html>");
-            out.println("<head>");
-            out.println("<title>Servlet RegisterServlet</title>");
-            out.println("</head>");
-            out.println("<body>");
-            out.println("<h1>Servlet RegisterServlet at " + request.getContextPath() + "</h1>");
-            out.println("</body>");
-            out.println("</html>");
+
+        request.getRequestDispatcher(
+                "/WEB-INF/views/auth/register.jsp"
+        ).forward(request, response);
+    }
+
+    @Override
+    protected void doPost(
+            HttpServletRequest request,
+            HttpServletResponse response)
+            throws ServletException, IOException {
+
+        request.setCharacterEncoding("UTF-8");
+
+        String fullName = request.getParameter("fullName");
+        String email = request.getParameter("email");
+        String password = request.getParameter("password");
+        String confirmPassword =
+                request.getParameter("confirmPassword");
+        String phone = request.getParameter("phone");
+
+
+        /*
+         * Trim unnecessary spaces.
+         */
+
+        if (fullName != null) {
+            fullName = fullName.trim();
         }
+
+        if (email != null) {
+            email = email.trim();
+        }
+
+        if (phone != null) {
+            phone = phone.trim();
+        }
+
+
+        /*
+         * Validate required fields.
+         */
+
+        if (isBlank(fullName)
+                || isBlank(email)
+                || isBlank(password)
+                || isBlank(confirmPassword)) {
+
+            request.setAttribute(
+                    "error",
+                    "Please fill in all required fields."
+            );
+
+            request.getRequestDispatcher(
+                    "/WEB-INF/views/auth/register.jsp"
+            ).forward(request, response);
+
+            return;
+        }
+
+
+        /*
+         * Validate full name.
+         */
+
+        if (fullName.length() < 2
+                || fullName.length() > 100) {
+
+            request.setAttribute(
+                    "error",
+                    "Full name must be between 2 and 100 characters."
+            );
+
+            request.getRequestDispatcher(
+                    "/WEB-INF/views/auth/register.jsp"
+            ).forward(request, response);
+
+            return;
+        }
+
+
+        /*
+         * Validate email.
+         */
+
+        if (!isValidEmail(email)) {
+
+            request.setAttribute(
+                    "error",
+                    "Invalid email format."
+            );
+
+            request.getRequestDispatcher(
+                    "/WEB-INF/views/auth/register.jsp"
+            ).forward(request, response);
+
+            return;
+        }
+
+
+        /*
+         * Validate password length.
+         */
+
+        if (password.length() < 6) {
+
+            request.setAttribute(
+                    "error",
+                    "Password must contain at least 6 characters."
+            );
+
+            request.getRequestDispatcher(
+                    "/WEB-INF/views/auth/register.jsp"
+            ).forward(request, response);
+
+            return;
+        }
+
+
+        /*
+         * Confirm password.
+         */
+
+        if (!password.equals(confirmPassword)) {
+
+            request.setAttribute(
+                    "error",
+                    "Passwords do not match."
+            );
+
+            request.getRequestDispatcher(
+                    "/WEB-INF/views/auth/register.jsp"
+            ).forward(request, response);
+
+            return;
+        }
+
+
+        /*
+         * Check duplicate email.
+         */
+
+        if (userDAO.existsByEmail(email)) {
+
+            request.setAttribute(
+                    "error",
+                    "This email is already registered."
+            );
+
+            request.getRequestDispatcher(
+                    "/WEB-INF/views/auth/register.jsp"
+            ).forward(request, response);
+
+            return;
+        }
+
+
+        /*
+         * Create new customer.
+         */
+
+        User user = new User();
+
+        user.setFullName(fullName);
+
+        user.setEmail(email);
+
+        user.setPassword(
+                PasswordUtil.hashPassword(password)
+        );
+
+        user.setPhone(phone);
+
+
+        /*
+         * Insert customer into database.
+         *
+         * UserDAO.insertCustomer()
+         * automatically sets role = CUSTOMER.
+         */
+
+        boolean success = userDAO.insertCustomer(user);
+
+
+        if (!success) {
+
+            request.setAttribute(
+                    "error",
+                    "Registration failed. Please try again."
+            );
+
+            request.getRequestDispatcher(
+                    "/WEB-INF/views/auth/register.jsp"
+            ).forward(request, response);
+
+            return;
+        }
+
+
+        /*
+         * Registration successful.
+         */
+
+        response.sendRedirect(
+                request.getContextPath()
+                + "/LoginServlet?registered=true"
+        );
     }
 
-    // <editor-fold defaultstate="collapsed" desc="HttpServlet methods. Click on the + sign on the left to edit the code.">
-    /**
-     * Handles the HTTP <code>GET</code> method.
-     *
-     * @param request servlet request
-     * @param response servlet response
-     * @throws ServletException if a servlet-specific error occurs
-     * @throws IOException if an I/O error occurs
-     */
-    @Override
-    protected void doGet(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
-        processRequest(request, response);
+
+    private boolean isBlank(String value) {
+
+        return value == null
+                || value.trim().isEmpty();
     }
 
-    /**
-     * Handles the HTTP <code>POST</code> method.
-     *
-     * @param request servlet request
-     * @param response servlet response
-     * @throws ServletException if a servlet-specific error occurs
-     * @throws IOException if an I/O error occurs
-     */
-    @Override
-    protected void doPost(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
-        processRequest(request, response);
+
+    private boolean isValidEmail(String email) {
+
+        return email.matches(
+                "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$"
+        );
     }
-
-    /**
-     * Returns a short description of the servlet.
-     *
-     * @return a String containing servlet description
-     */
-    @Override
-    public String getServletInfo() {
-        return "Short description";
-    }// </editor-fold>
-
 }
